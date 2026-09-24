@@ -1,6 +1,6 @@
 import { effectiveStatusFn, serializeTaskFn, serializeTaskWithChildrenFn, serializeTaskNotificationFn, serializeProjectFn } from "../serializers.js";
 import type { ListTasksArgs, CreateTaskArgs, UpdateTaskArgs, GetTaskArgs, MoveTasksArgs, DuplicateTasksArgs, SetTaskTagsArgs, AddTaskNotificationArgs, BatchCreateTasksArgs, BatchDeleteTasksArgs, BatchCompleteTasksArgs } from "../../types/omnifocus.js";
-import { validateDateArgs } from "../../utils/dates.js";
+import { validateDateArgs, normalizeDateArgs, TASK_DATE_TIMES, FILTER_DATE_TIMES, START_OF_DAY } from "../../utils/dates.js";
 
 // Shared filter logic used by both buildListTasksScript and buildGetTaskCountScript
 // Single-pass filter: all conditions checked in one pass to avoid intermediate array allocations
@@ -82,8 +82,13 @@ const taskFilterLogicFn = `
     return true;
   });`;
 
+function prepareFilterArgs(args: ListTasksArgs): ListTasksArgs {
+  validateDateArgs(args as unknown as Record<string, unknown>, Object.keys(FILTER_DATE_TIMES));
+  return normalizeDateArgs(args, FILTER_DATE_TIMES);
+}
+
 export function buildListTasksScript(args: ListTasksArgs): string {
-  const argsJson = JSON.stringify(args);
+  const argsJson = JSON.stringify(prepareFilterArgs(args));
   return `(() => {
   var args = JSON.parse(${JSON.stringify(argsJson)});
   ${serializeTaskFn}
@@ -100,7 +105,7 @@ export function buildListTasksScript(args: ListTasksArgs): string {
 }
 
 export function buildGetTaskCountScript(args: ListTasksArgs): string {
-  const argsJson = JSON.stringify(args);
+  const argsJson = JSON.stringify(prepareFilterArgs(args));
   return `(() => {
   var args = JSON.parse(${JSON.stringify(argsJson)});
   ${effectiveStatusFn}
@@ -142,7 +147,7 @@ export function buildGetTaskScript(args: string | GetTaskArgs): string {
 
 export function buildCreateTaskScript(args: CreateTaskArgs): string {
   validateDateArgs(args as unknown as Record<string, unknown>, ["deferDate", "dueDate", "plannedDate"]);
-  const argsJson = JSON.stringify(args);
+  const argsJson = JSON.stringify(normalizeDateArgs(args, TASK_DATE_TIMES));
   return `(() => {
   var args = JSON.parse(${JSON.stringify(argsJson)});
   ${serializeTaskFn}
@@ -191,7 +196,7 @@ export function buildCreateTaskScript(args: CreateTaskArgs): string {
 
 export function buildUpdateTaskScript(args: UpdateTaskArgs): string {
   validateDateArgs(args as unknown as Record<string, unknown>, ["deferDate", "dueDate", "plannedDate"]);
-  const argsJson = JSON.stringify(args);
+  const argsJson = JSON.stringify(normalizeDateArgs(args, TASK_DATE_TIMES));
   return `(() => {
   var args = JSON.parse(${JSON.stringify(argsJson)});
   ${serializeTaskFn}
@@ -223,7 +228,8 @@ export function buildUpdateTaskScript(args: UpdateTaskArgs): string {
 }
 
 export function buildCompleteTaskScript(id: string, completionDate?: string): string {
-  const argsJson = JSON.stringify({ id, completionDate: completionDate ?? null });
+  validateDateArgs({ completionDate }, ["completionDate"]);
+  const argsJson = JSON.stringify(normalizeDateArgs({ id, completionDate: completionDate ?? null }, { completionDate: START_OF_DAY }));
   return `(() => {
   var args = JSON.parse(${JSON.stringify(argsJson)});
   ${serializeTaskFn}
@@ -382,7 +388,7 @@ export function buildSetTaskTagsScript(args: SetTaskTagsArgs): string {
 
 export function buildAddTaskNotificationScript(args: AddTaskNotificationArgs): string {
   validateDateArgs(args as unknown as Record<string, unknown>, ["absoluteDate"]);
-  const argsJson = JSON.stringify(args);
+  const argsJson = JSON.stringify(normalizeDateArgs(args, { absoluteDate: [9, 0] }));
   return `(() => {
   var args = JSON.parse(${JSON.stringify(argsJson)});
   ${serializeTaskFn}
@@ -487,7 +493,16 @@ export function buildBatchCreateTasksScript(args: BatchCreateTasksArgs): string 
     }
   }
   validateBatchTaskDates(args.tasks as unknown as Record<string, unknown>[]);
-  const argsJson = JSON.stringify(args);
+  function normalizeBatchTaskDates(tasks: Record<string, unknown>[]): Record<string, unknown>[] {
+    return tasks.map((task) => {
+      const normalized = normalizeDateArgs(task, TASK_DATE_TIMES);
+      if (Array.isArray(task.children)) {
+        normalized.children = normalizeBatchTaskDates(task.children as Record<string, unknown>[]);
+      }
+      return normalized;
+    });
+  }
+  const argsJson = JSON.stringify({ ...args, tasks: normalizeBatchTaskDates(args.tasks as unknown as Record<string, unknown>[]) });
   return `(() => {
   var args = JSON.parse(${JSON.stringify(argsJson)});
   ${serializeTaskFn}

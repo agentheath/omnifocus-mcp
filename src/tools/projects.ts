@@ -54,9 +54,9 @@ export function registerProjectTools(server: McpServer, client: OmniFocusClient)
       sequential: z.boolean().optional().describe("Whether tasks must be completed in order"),
       singleActionList: z.boolean().optional().describe("Whether this is a single-action list"),
       completedByChildren: z.boolean().optional().describe("Auto-complete when all children are completed"),
-      deferDate: z.string().optional().describe("Defer date (ISO 8601)"),
-      dueDate: z.string().optional().describe("Due date (ISO 8601)"),
-      plannedDate: z.string().optional().describe("Planned date (ISO 8601)"),
+      deferDate: z.string().optional().describe("Defer date (ISO 8601; a bare YYYY-MM-DD means 12:00 AM local time)"),
+      dueDate: z.string().optional().describe("Due date (ISO 8601; a bare YYYY-MM-DD means 5:00 PM local time)"),
+      plannedDate: z.string().optional().describe("Planned date (ISO 8601; a bare YYYY-MM-DD means 9:00 AM local time)"),
       flagged: z.boolean().optional().describe("Whether to flag the project"),
       tags: z.array(z.string()).optional().describe("Tag names to apply"),
       reviewInterval: z
@@ -89,9 +89,9 @@ export function registerProjectTools(server: McpServer, client: OmniFocusClient)
       sequential: z.boolean().optional().describe("Whether tasks must be completed in order"),
       singleActionList: z.boolean().optional().describe("Whether this is a single-action list"),
       completedByChildren: z.boolean().optional().describe("Auto-complete when all children are completed"),
-      deferDate: z.string().nullable().optional().describe("New defer date (ISO 8601) or null to clear"),
-      dueDate: z.string().nullable().optional().describe("New due date (ISO 8601) or null to clear"),
-      plannedDate: z.string().nullable().optional().describe("New planned date (ISO 8601) or null to clear"),
+      deferDate: z.string().nullable().optional().describe("New defer date (ISO 8601; a bare YYYY-MM-DD means 12:00 AM local time) or null to clear"),
+      dueDate: z.string().nullable().optional().describe("New due date (ISO 8601; a bare YYYY-MM-DD means 5:00 PM local time) or null to clear"),
+      plannedDate: z.string().nullable().optional().describe("New planned date (ISO 8601; a bare YYYY-MM-DD means 9:00 AM local time) or null to clear"),
       flagged: z.boolean().optional().describe("New flagged status"),
       reviewInterval: z
         .object({

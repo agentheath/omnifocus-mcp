@@ -1,5 +1,17 @@
 import { describe, it, expect } from "vitest";
-import { parseISODate, isValidISODate, toISOString, parseDateOrNull, validateDateArgs } from "../../../src/utils/dates.js";
+import {
+  parseISODate,
+  isValidISODate,
+  toISOString,
+  parseDateOrNull,
+  validateDateArgs,
+  normalizeDateOnly,
+  normalizeDateArgs,
+  START_OF_DAY,
+  END_OF_DAY,
+  TASK_DATE_TIMES,
+  FILTER_DATE_TIMES,
+} from "../../../src/utils/dates.js";
 
 describe("parseISODate", () => {
   it("should parse valid ISO date strings", () => {
@@ -104,5 +116,71 @@ describe("validateDateArgs", () => {
     expect(() =>
       validateDateArgs({ dueDate: "valid-date-no", otherField: "also-not-a-date" }, ["otherField"]),
     ).toThrow("Invalid date for 'otherField'");
+  });
+});
+
+// vitest.config.ts pins TZ to America/Los_Angeles (PDT = UTC-7, PST = UTC-8).
+describe("normalizeDateOnly", () => {
+  it("runs in the pinned test time zone", () => {
+    expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe("America/Los_Angeles");
+  });
+
+  it("puts a bare date on that local day instead of UTC midnight", () => {
+    expect(normalizeDateOnly("2026-09-28", START_OF_DAY)).toBe("2026-09-28T07:00:00.000Z");
+  });
+
+  it("applies the time of day", () => {
+    expect(normalizeDateOnly("2026-10-02", [17, 0])).toBe("2026-10-03T00:00:00.000Z");
+    expect(normalizeDateOnly("2026-10-02", END_OF_DAY)).toBe("2026-10-03T06:59:59.999Z");
+  });
+
+  it("uses the offset in effect on that date across the DST switch (Sun Nov 1 2026)", () => {
+    expect(normalizeDateOnly("2026-10-31", [17, 0])).toBe("2026-11-01T00:00:00.000Z");
+    expect(normalizeDateOnly("2026-11-01", START_OF_DAY)).toBe("2026-11-01T07:00:00.000Z");
+    expect(normalizeDateOnly("2026-11-01", [17, 0])).toBe("2026-11-02T01:00:00.000Z");
+    expect(normalizeDateOnly("2026-11-01", END_OF_DAY)).toBe("2026-11-02T07:59:59.999Z");
+  });
+
+  it("passes date-times through unchanged", () => {
+    for (const value of ["2026-09-28T00:00:00-07:00", "2026-09-28T17:00:00Z", "2026-09-28T17:00:00", "2026-09-28T17:00:00.000Z"]) {
+      expect(normalizeDateOnly(value, START_OF_DAY)).toBe(value);
+    }
+  });
+
+  it("returns null for impossible calendar dates that Date would roll over", () => {
+    expect(normalizeDateOnly("2026-02-30", START_OF_DAY)).toBeNull();
+    expect(normalizeDateOnly("2026-04-31", START_OF_DAY)).toBeNull();
+    expect(normalizeDateOnly("2028-02-29", START_OF_DAY)).toBe("2028-02-29T08:00:00.000Z");
+  });
+});
+
+describe("normalizeDateArgs", () => {
+  it("applies OmniFocus's default defer, planned, and due times", () => {
+    const result = normalizeDateArgs(
+      { name: "x", deferDate: "2026-10-02", plannedDate: "2026-10-02", dueDate: "2026-10-02" },
+      TASK_DATE_TIMES,
+    );
+    expect(result).toEqual({
+      name: "x",
+      deferDate: "2026-10-02T07:00:00.000Z",
+      plannedDate: "2026-10-02T16:00:00.000Z",
+      dueDate: "2026-10-03T00:00:00.000Z",
+    });
+  });
+
+  it("makes filter bounds cover the whole local day", () => {
+    const result = normalizeDateArgs({ dueAfter: "2026-10-02", dueBefore: "2026-10-02" }, FILTER_DATE_TIMES);
+    expect(result).toEqual({ dueAfter: "2026-10-02T07:00:00.000Z", dueBefore: "2026-10-03T06:59:59.999Z" });
+  });
+
+  it("leaves null, undefined, empty, and unlisted fields alone and does not mutate its input", () => {
+    const args = { id: "t", deferDate: null, dueDate: undefined, plannedDate: "", other: "2026-10-02" };
+    const result = normalizeDateArgs(args, TASK_DATE_TIMES);
+    expect(result).toEqual(args);
+    expect(result).not.toBe(args);
+  });
+
+  it("throws for impossible calendar dates", () => {
+    expect(() => normalizeDateArgs({ dueDate: "2026-02-30" }, TASK_DATE_TIMES)).toThrow("Invalid date for 'dueDate'");
   });
 });
