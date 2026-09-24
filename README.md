@@ -6,7 +6,7 @@
 > ✔️ Turn prompts into projects.
 
 > [!NOTE]
-> **This is a fork** of [IllyaStarikov/omnifocus-mcp](https://github.com/IllyaStarikov/omnifocus-mcp), maintained at [agentheath/omnifocus-mcp](https://github.com/agentheath/omnifocus-mcp). It carries fixes not yet merged upstream: inherited dropped state ([upstream PR #1](https://github.com/IllyaStarikov/omnifocus-mcp/pull/1)), status filters that count Next/DueSoon/Overdue tasks as available and remaining, date-only arguments (`2026-10-02`) interpreted as local dates instead of UTC midnight, unknown tag names rejected instead of silently created (pass `createMissingTags: true` to create them), and project names that prefer the active or on-hold project when several share a name. The npm package `omnifocus-mcp-server` is the upstream release. To run this fork, build it from source (`npm install && npm run build`) and point your MCP client at `dist/index.js`.
+> **This is a fork** of [IllyaStarikov/omnifocus-mcp](https://github.com/IllyaStarikov/omnifocus-mcp), maintained at [agentheath/omnifocus-mcp](https://github.com/agentheath/omnifocus-mcp). It carries fixes not yet merged upstream: inherited dropped state ([upstream PR #1](https://github.com/IllyaStarikov/omnifocus-mcp/pull/1)), status filters that count Next/DueSoon/Overdue tasks as available and remaining, date-only arguments (`2026-10-02`) interpreted as local dates instead of UTC midnight, unknown tag names rejected instead of silently created (pass `createMissingTags: true` to create them), and project names that prefer the active or on-hold project when several share a name. The npm package `omnifocus-mcp-server` is the upstream release. To run this fork, run `npm run deploy` from a checkout: it clones `main` from GitHub into `~/.local/share/omnifocus-mcp` and builds it there, and MCP clients point at `~/.local/share/omnifocus-mcp/dist/index.js`. See [Deploying the live server](#deploying-the-live-server).
 
 Feature-complete [Model Context Protocol](https://modelcontextprotocol.io/) server for [OmniFocus](https://www.omnigroup.com/omnifocus). Full read/write access to tasks, projects, folders, tags, and perspectives — 51 tools, 2 resources, and 3 prompts.
 
@@ -302,6 +302,20 @@ Tests against a real OmniFocus instance (creates and cleans up test items):
 
 ```bash
 OMNIFOCUS_LIVE=1 npm run test:integration
+```
+
+### Deploying the live server
+
+MCP clients run a separate clone at `~/.local/share/omnifocus-mcp`, not this checkout, so branches and unbuilt work here never reach them. After merging to `main` and pushing:
+
+```bash
+npm run deploy     # pull origin/main into the live clone, npm ci, build
+```
+
+Then reconnect the server (`/mcp` in Claude Code; quit and reopen Claude Desktop). Set `OMNIFOCUS_MCP_LIVE_DIR` to use a different location. Client config:
+
+```json
+{ "command": "node", "args": ["/Users/<you>/.local/share/omnifocus-mcp/dist/index.js"] }
 ```
 
 ### Contributing

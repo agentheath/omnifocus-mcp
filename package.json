@@ -19,6 +19,7 @@
     "test:watch": "vitest",
     "test:integration": "OMNIFOCUS_LIVE=1 vitest run tests/integration",
     "test:smoke": "node scripts/smoke-test.mjs",
+    "deploy": "sh scripts/deploy.sh",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
