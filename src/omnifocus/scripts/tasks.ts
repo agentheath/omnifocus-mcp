@@ -24,11 +24,9 @@ const taskFilterLogicFn = `
   var tasks = source.filter(function(t) {
     // Filter by taskStatus
     if (args.taskStatus === "available") {
-      if (taskIsEffectivelyDropped(t)) return false;
-      if (t.taskStatus !== Task.Status.Available) return false;
+      if (!taskIsActionable(t)) return false;
     } else if (args.taskStatus === "remaining") {
-      if (taskIsEffectivelyDropped(t)) return false;
-      if (t.taskStatus !== Task.Status.Available && t.taskStatus !== Task.Status.Blocked) return false;
+      if (!taskIsRemaining(t)) return false;
     } else if (args.taskStatus === "completed") {
       if (t.taskStatus !== Task.Status.Completed) return false;
     } else if (args.taskStatus === "dropped") {
@@ -36,7 +34,7 @@ const taskFilterLogicFn = `
     } else if (args.completed === true) {
       if (t.taskStatus !== Task.Status.Completed) return false;
     } else if (args.completed === false) {
-      if (t.taskStatus === Task.Status.Completed || taskIsEffectivelyDropped(t)) return false;
+      if (!taskIsRemaining(t)) return false;
     }
 
     // Match effectiveFlagged so children of a flagged project surface (mirrors OmniFocus's Flagged perspective).
@@ -44,7 +42,7 @@ const taskFilterLogicFn = `
     if (args.flagged === false && t.effectiveFlagged) return false;
 
     // Filter by available
-    if (args.available === true && (t.taskStatus !== Task.Status.Available || taskIsEffectivelyDropped(t))) return false;
+    if (args.available === true && !taskIsActionable(t)) return false;
 
     // Filter by project ID
     if (args.projectId) {

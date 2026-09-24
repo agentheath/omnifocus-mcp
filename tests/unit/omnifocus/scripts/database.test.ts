@@ -20,7 +20,8 @@ describe("database script builders", () => {
 
     it("should count available tasks", () => {
       const script = buildDatabaseSummaryScript();
-      expect(script).toContain("Task.Status.Available");
+      expect(script).toContain("allTasks.filter(taskIsActionable)");
+      expect(script).toContain("inbox.filter(taskIsActionable)");
     });
 
     it("excludes projects and tasks hidden by dropped parent folders from active summary counts", () => {

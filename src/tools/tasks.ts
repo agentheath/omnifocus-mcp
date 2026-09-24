@@ -31,7 +31,7 @@ export function registerTaskTools(server: McpServer, client: OmniFocusClient): v
     {
       completed: z.boolean().optional().describe("Filter by completion status"),
       flagged: z.boolean().optional().describe("Filter by flagged status"),
-      available: z.boolean().optional().describe("Only show available (actionable) tasks"),
+      available: z.boolean().optional().describe("Only show available (actionable) tasks: status available, next, dueSoon, or overdue"),
       inInbox: z.boolean().optional().describe("Only show inbox tasks"),
       projectId: z.string().optional().describe("Filter by project ID"),
       projectName: z.string().optional().describe("Filter by project name"),
@@ -43,7 +43,7 @@ export function registerTaskTools(server: McpServer, client: OmniFocusClient): v
       plannedAfter: z.string().optional().describe("Filter tasks planned after this ISO date"),
       plannedBefore: z.string().optional().describe("Filter tasks planned before this ISO date"),
       search: z.string().optional().describe("Full-text search in task name and note"),
-      taskStatus: z.enum(["available", "remaining", "completed", "dropped"]).optional().describe("Filter by task status"),
+      taskStatus: z.enum(["available", "remaining", "completed", "dropped"]).optional().describe("Filter by task status. available = actionable now (available, next, dueSoon, overdue); remaining = not completed or dropped (also includes blocked); dropped includes tasks in dropped projects/folders"),
       limit: z.number().min(1).max(1000).optional().describe("Maximum results (default 100)"),
       offset: z.number().min(0).optional().describe("Skip this many results"),
     },
@@ -302,7 +302,7 @@ export function registerTaskTools(server: McpServer, client: OmniFocusClient): v
 
   server.tool(
     "get_flagged_tasks",
-    "Get all available flagged tasks",
+    "Get all available (actionable) flagged tasks, including next, due-soon, and overdue ones",
     {},
     async () => {
       try {
@@ -466,7 +466,7 @@ export function registerTaskTools(server: McpServer, client: OmniFocusClient): v
     {
       completed: z.boolean().optional().describe("Filter by completion status"),
       flagged: z.boolean().optional().describe("Filter by flagged status"),
-      available: z.boolean().optional().describe("Only count available (actionable) tasks"),
+      available: z.boolean().optional().describe("Only count available (actionable) tasks: status available, next, dueSoon, or overdue"),
       inInbox: z.boolean().optional().describe("Only count inbox tasks"),
       projectId: z.string().optional().describe("Filter by project ID"),
       projectName: z.string().optional().describe("Filter by project name"),
@@ -478,7 +478,7 @@ export function registerTaskTools(server: McpServer, client: OmniFocusClient): v
       plannedAfter: z.string().optional().describe("Filter tasks planned after this ISO date"),
       plannedBefore: z.string().optional().describe("Filter tasks planned before this ISO date"),
       search: z.string().optional().describe("Full-text search in task name and note"),
-      taskStatus: z.enum(["available", "remaining", "completed", "dropped"]).optional().describe("Filter by task status"),
+      taskStatus: z.enum(["available", "remaining", "completed", "dropped"]).optional().describe("Filter by task status. available = actionable now (available, next, dueSoon, overdue); remaining = not completed or dropped (also includes blocked); dropped includes tasks in dropped projects/folders"),
     },
     async (args) => {
       try {

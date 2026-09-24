@@ -6,7 +6,7 @@ import { formatMcpError } from "../utils/errors.js";
 export function registerDatabaseTools(server: McpServer, client: OmniFocusClient): void {
   server.tool(
     "get_database_summary",
-    "Get a summary of the OmniFocus database including counts of inbox items, projects, tags, folders, available/due-soon/overdue/flagged tasks",
+    "Get a summary of the OmniFocus database including counts of inbox items, projects, tags, folders, available/due-soon/overdue/flagged tasks. The available count includes due-soon and overdue tasks, so it overlaps those counts",
     {},
     async () => {
       try {

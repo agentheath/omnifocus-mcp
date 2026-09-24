@@ -155,8 +155,7 @@ describe("serializer templates", () => {
 
     it("should count tasks and remaining tasks", () => {
       expect(serializeProjectFn).toContain("flattenedTasks");
-      expect(serializeProjectFn).toContain("Task.Status.Available");
-      expect(serializeProjectFn).toContain("Task.Status.Blocked");
+      expect(serializeProjectFn).toContain("remainingTaskCount: ft.filter(taskIsRemaining).length");
     });
 
     it("should use containsSingletonActions for SAL", () => {

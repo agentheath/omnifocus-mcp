@@ -91,9 +91,24 @@ function projectIsEffectivelyDropped(project) {
 }
 
 function taskIsEffectivelyDropped(task) {
+  // Leftover tasks in a Done project report Task.Status.Dropped without effectivelyDropped.
+  if (task.taskStatus === Task.Status.Dropped) return true;
   if (task.effectivelyDropped === true) return true;
   if (task.containingProject && projectIsEffectivelyDropped(task.containingProject)) return true;
   return false;
+}
+
+// OmniFocus "Remaining": anything not completed or dropped, including Blocked.
+function taskIsRemaining(task) {
+  return task.taskStatus !== Task.Status.Completed && !taskIsEffectivelyDropped(task);
+}
+
+// OmniFocus "Available": Task.Status is mutually exclusive, so Next/DueSoon/Overdue
+// tasks are actionable too, not just Task.Status.Available.
+function taskIsActionable(task) {
+  if (!taskIsRemaining(task)) return false;
+  var s = task.taskStatus;
+  return s === Task.Status.Available || s === Task.Status.Next || s === Task.Status.DueSoon || s === Task.Status.Overdue;
 }
 
 function projectEffectiveStatus(project) {
@@ -142,7 +157,7 @@ function serializeProject(project) {
     singleActionList: project.containsSingletonActions,
     completedByChildren: project.completedByChildren,
     taskCount: ft.length,
-    remainingTaskCount: ft.filter(function(t) { return t.taskStatus === Task.Status.Available || t.taskStatus === Task.Status.Blocked; }).length,
+    remainingTaskCount: ft.filter(taskIsRemaining).length,
     lastReviewDate: project.lastReviewDate ? project.lastReviewDate.toISOString() : null,
     nextReviewDate: project.nextReviewDate ? project.nextReviewDate.toISOString() : null,
     reviewInterval: ri

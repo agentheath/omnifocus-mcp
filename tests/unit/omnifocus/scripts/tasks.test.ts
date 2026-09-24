@@ -111,18 +111,16 @@ describe("task script builders", () => {
       expect(script).toContain("10");
     });
 
-    it("taskStatus 'available' pins to Task.Status.Available", () => {
+    it("taskStatus 'available' uses taskIsActionable", () => {
       const script = buildListTasksScript({ taskStatus: "available" });
-      expect(script).toContain("Task.Status.Available");
       expect(script).toContain('args.taskStatus === "available"');
-      expect(script).toContain("taskIsEffectivelyDropped(t)");
+      expect(script).toContain("if (!taskIsActionable(t)) return false;");
     });
 
-    it("taskStatus 'remaining' is the union of Available and Blocked", () => {
+    it("taskStatus 'remaining' uses taskIsRemaining", () => {
       const script = buildListTasksScript({ taskStatus: "remaining" });
-      expect(script).toContain("Task.Status.Available");
-      expect(script).toContain("Task.Status.Blocked");
       expect(script).toContain('args.taskStatus === "remaining"');
+      expect(script).toContain("if (!taskIsRemaining(t)) return false;");
     });
 
     it("taskStatus 'completed' pins to Task.Status.Completed", () => {
@@ -175,13 +173,13 @@ describe("task script builders", () => {
 
     it("should include available filter", () => {
       const script = buildListTasksScript({ available: true });
-      expect(script).toContain("Task.Status.Available");
-      expect(script).toContain("taskIsEffectivelyDropped(t)");
+      expect(script).toContain("args.available === true && !taskIsActionable(t)");
     });
 
     it("excludes effectively dropped tasks from normal incomplete filters", () => {
       const script = buildListTasksScript({ completed: false });
-      expect(script).toContain("taskIsEffectivelyDropped(t)");
+      expect(script).toContain("if (!taskIsRemaining(t)) return false;");
+      expect(script).toContain("taskIsEffectivelyDropped(task)");
       expect(script).toContain("projectIsEffectivelyDropped");
       expect(script).toContain("folderIsEffectivelyDropped");
     });
@@ -686,7 +684,7 @@ describe("task script builders", () => {
     it("should apply filter logic", () => {
       const script = buildGetTaskCountScript({ flagged: true, taskStatus: "available" });
       expect(script).toContain("flagged");
-      expect(script).toContain("Task.Status.Available");
+      expect(script).toContain("taskIsActionable(t)");
     });
 
     it("should apply date filters", () => {
