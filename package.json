@@ -45,10 +45,16 @@
     "ai"
   ],
   "author": "Illya Starikov",
+  "contributors": [
+    "Heath Reinhard"
+  ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/IllyaStarikov/omnifocus-mcp.git"
+    "url": "git+https://github.com/agentheath/omnifocus-mcp.git"
   },
-  "homepage": "https://github.com/IllyaStarikov/omnifocus-mcp",
+  "homepage": "https://github.com/agentheath/omnifocus-mcp",
+  "bugs": {
+    "url": "https://github.com/agentheath/omnifocus-mcp/issues"
+  },
   "license": "MIT"
 }

@@ -5,6 +5,9 @@
 
 > ✔️ Turn prompts into projects.
 
+> [!NOTE]
+> **This is a fork** of [IllyaStarikov/omnifocus-mcp](https://github.com/IllyaStarikov/omnifocus-mcp), maintained at [agentheath/omnifocus-mcp](https://github.com/agentheath/omnifocus-mcp). It carries fixes not yet merged upstream, starting with inherited dropped state ([upstream PR #1](https://github.com/IllyaStarikov/omnifocus-mcp/pull/1)). The npm package `omnifocus-mcp-server` is the upstream release. To run this fork, build it from source (`npm install && npm run build`) and point your MCP client at `dist/index.js`.
+
 Feature-complete [Model Context Protocol](https://modelcontextprotocol.io/) server for [OmniFocus](https://www.omnigroup.com/omnifocus). Full read/write access to tasks, projects, folders, tags, and perspectives — 51 tools, 2 resources, and 3 prompts.
 
 Uses [Omni Automation](https://omni-automation.com/) (OmniJS) under the hood, executing scripts via JXA and `osascript`. This is why macOS is required.
