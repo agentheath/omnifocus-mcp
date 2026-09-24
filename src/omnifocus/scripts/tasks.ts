@@ -1,4 +1,5 @@
 import { effectiveStatusFn, serializeTaskFn, serializeTaskWithChildrenFn, serializeTaskNotificationFn, serializeProjectFn } from "../serializers.js";
+import { findProjectByNameFn, resolveTagsFn } from "../lookups.js";
 import type { ListTasksArgs, CreateTaskArgs, UpdateTaskArgs, GetTaskArgs, MoveTasksArgs, DuplicateTasksArgs, SetTaskTagsArgs, AddTaskNotificationArgs, BatchCreateTasksArgs, BatchDeleteTasksArgs, BatchCompleteTasksArgs } from "../../types/omnifocus.js";
 import { validateDateArgs, normalizeDateArgs, TASK_DATE_TIMES, FILTER_DATE_TIMES, START_OF_DAY } from "../../utils/dates.js";
 
@@ -151,8 +152,23 @@ export function buildCreateTaskScript(args: CreateTaskArgs): string {
   return `(() => {
   var args = JSON.parse(${JSON.stringify(argsJson)});
   ${serializeTaskFn}
+  ${effectiveStatusFn}
+  ${findProjectByNameFn}
+  ${resolveTagsFn}
 
-  var task = new Task(args.name, inbox.ending);
+  // Resolve every name before creating anything, so a bad project or tag name leaves nothing behind.
+  var destination = inbox.ending;
+  if (args.projectId) {
+    var project = byId(flattenedProjects, args.projectId);
+    if (!project) throw new Error("Project not found: " + args.projectId);
+    destination = project.ending;
+  } else if (args.projectName) {
+    destination = findProjectByName(args.projectName).ending;
+  }
+  var tagNames = args.tags || [];
+  var tagMap = resolveTags(tagNames, args.createMissingTags === true);
+
+  var task = new Task(args.name, destination);
 
   if (args.note !== undefined) task.note = args.note;
   if (args.flagged !== undefined) task.flagged = args.flagged;
@@ -167,28 +183,7 @@ export function buildCreateTaskScript(args: CreateTaskArgs): string {
     task.repetitionRule = new Task.RepetitionRule(args.repetitionRule.ruleString, methodMap[args.repetitionRule.method] || Task.RepetitionMethod.Fixed);
   }
 
-  if (args.projectId) {
-    var project = byId(flattenedProjects, args.projectId);
-    if (!project) throw new Error("Project not found: " + args.projectId);
-    moveTasks([task], project.ending);
-  } else if (args.projectName) {
-    var projects = flattenedProjects.filter(function(p) { return p.name === args.projectName; });
-    if (projects.length === 0) throw new Error("Project not found: " + args.projectName);
-    moveTasks([task], projects[0].ending);
-  }
-
-  if (args.tags && args.tags.length > 0) {
-    args.tags.forEach(function(tagName) {
-      var matches = flattenedTags.filter(function(t) { return t.name === tagName; });
-      if (matches.length > 0) {
-        task.addTag(matches[0]);
-      } else {
-        var newTag = new Tag(tagName);
-        tags.push(newTag);
-        task.addTag(newTag);
-      }
-    });
-  }
+  tagNames.forEach(function(tagName) { task.addTag(tagMap[tagName]); });
 
   return JSON.stringify(serializeTask(task));
 })()`;
@@ -288,6 +283,8 @@ export function buildMoveTasksScript(args: MoveTasksArgs): string {
   return `(() => {
   var args = JSON.parse(${JSON.stringify(argsJson)});
   ${serializeTaskFn}
+  ${effectiveStatusFn}
+  ${findProjectByNameFn}
 
   var tasks = args.taskIds.map(function(id) {
     var t = byId(flattenedTasks, id);
@@ -305,9 +302,7 @@ export function buildMoveTasksScript(args: MoveTasksArgs): string {
     if (!project) throw new Error("Project not found: " + args.projectId);
     destination = project.ending;
   } else if (args.projectName) {
-    var projects = flattenedProjects.filter(function(p) { return p.name === args.projectName; });
-    if (projects.length === 0) throw new Error("Project not found: " + args.projectName);
-    destination = projects[0].ending;
+    destination = findProjectByName(args.projectName).ending;
   } else {
     destination = inbox.ending;
   }
@@ -322,6 +317,8 @@ export function buildDuplicateTasksScript(args: DuplicateTasksArgs): string {
   return `(() => {
   var args = JSON.parse(${JSON.stringify(argsJson)});
   ${serializeTaskFn}
+  ${effectiveStatusFn}
+  ${findProjectByNameFn}
 
   var tasks = args.taskIds.map(function(id) {
     var t = byId(flattenedTasks, id);
@@ -335,9 +332,7 @@ export function buildDuplicateTasksScript(args: DuplicateTasksArgs): string {
     if (!project) throw new Error("Project not found: " + args.projectId);
     destination = project.ending;
   } else if (args.projectName) {
-    var projects = flattenedProjects.filter(function(p) { return p.name === args.projectName; });
-    if (projects.length === 0) throw new Error("Project not found: " + args.projectName);
-    destination = projects[0].ending;
+    destination = findProjectByName(args.projectName).ending;
   } else {
     destination = inbox.ending;
   }
@@ -352,29 +347,27 @@ export function buildSetTaskTagsScript(args: SetTaskTagsArgs): string {
   return `(() => {
   var args = JSON.parse(${JSON.stringify(argsJson)});
   ${serializeTaskFn}
+  ${resolveTagsFn}
 
   var task = byId(flattenedTasks, args.taskId);
   if (!task) throw new Error("Task not found: " + args.taskId);
 
+  // Removing an unknown tag is a no-op; replace/add resolve every name before touching the task.
   var tagMap = {};
-  flattenedTags.forEach(function(t) { tagMap[t.name] = t; });
-
-  function findOrCreateTag(name) {
-    if (tagMap[name]) return tagMap[name];
-    var newTag = new Tag(name);
-    tags.push(newTag);
-    tagMap[name] = newTag;
-    return newTag;
+  if (args.mode === "remove") {
+    flattenedTags.forEach(function(t) { if (!tagMap[t.name]) tagMap[t.name] = t; });
+  } else {
+    tagMap = resolveTags(args.tagNames, args.createMissingTags === true);
   }
 
   if (args.mode === "replace") {
     task.clearTags();
     args.tagNames.forEach(function(name) {
-      task.addTag(findOrCreateTag(name));
+      task.addTag(tagMap[name]);
     });
   } else if (args.mode === "add") {
     args.tagNames.forEach(function(name) {
-      task.addTag(findOrCreateTag(name));
+      task.addTag(tagMap[name]);
     });
   } else if (args.mode === "remove") {
     args.tagNames.forEach(function(name) {
@@ -506,17 +499,19 @@ export function buildBatchCreateTasksScript(args: BatchCreateTasksArgs): string 
   return `(() => {
   var args = JSON.parse(${JSON.stringify(argsJson)});
   ${serializeTaskFn}
+  ${effectiveStatusFn}
+  ${findProjectByNameFn}
+  ${resolveTagsFn}
 
-  var tagMap = {};
-  flattenedTags.forEach(function(t) { tagMap[t.name] = t; });
-
-  function findOrCreateTag(name) {
-    if (tagMap[name]) return tagMap[name];
-    var newTag = new Tag(name);
-    tags.push(newTag);
-    tagMap[name] = newTag;
-    return newTag;
-  }
+  // Resolve every tag name at every depth before creating anything.
+  var allTagNames = [];
+  (function collectTagNames(items) {
+    items.forEach(function(item) {
+      if (item.tags) allTagNames = allTagNames.concat(item.tags);
+      if (item.children) collectTagNames(item.children);
+    });
+  })(args.tasks);
+  var tagMap = resolveTags(allTagNames, args.createMissingTags === true);
 
   function createTaskFromItem(item, parentLocation) {
     var task = new Task(item.name, parentLocation);
@@ -535,7 +530,7 @@ export function buildBatchCreateTasksScript(args: BatchCreateTasksArgs): string 
     }
 
     if (item.tags && item.tags.length > 0) {
-      item.tags.forEach(function(tagName) { task.addTag(findOrCreateTag(tagName)); });
+      item.tags.forEach(function(tagName) { task.addTag(tagMap[tagName]); });
     }
 
     if (item.children && item.children.length > 0) {
@@ -557,9 +552,7 @@ export function buildBatchCreateTasksScript(args: BatchCreateTasksArgs): string 
     if (!project) throw new Error("Project not found: " + args.projectId);
     destination = project.ending;
   } else if (args.projectName) {
-    var projects = flattenedProjects.filter(function(p) { return p.name === args.projectName; });
-    if (projects.length === 0) throw new Error("Project not found: " + args.projectName);
-    destination = projects[0].ending;
+    destination = findProjectByName(args.projectName).ending;
   } else {
     destination = inbox.ending;
   }

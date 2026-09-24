@@ -529,7 +529,7 @@ describe("Tool handler tests via MCP protocol", () => {
 
       const scriptArg = mockRunOmniJSJson.mock.calls[0][0];
       expect(scriptArg).toContain("addTag");
-      expect(scriptArg).toContain("findOrCreateTag");
+      expect(scriptArg).toContain("resolveTags(args.tagNames");
     });
 
     it("should remove tags", async () => {

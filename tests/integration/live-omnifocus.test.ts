@@ -65,11 +65,19 @@ describe.skipIf(!LIVE)("Live OmniFocus Tests", () => {
     expect(fetched.id).toBe(project.id);
   });
 
+  it("should reject an unknown tag without creating the task", async () => {
+    const name = `${PREFIX} Rejected task`;
+    await expect(client.createTask({ name, tags: [`${PREFIX}-missing-tag`] })).rejects.toThrow(/Unknown tag/);
+    const leftovers = await client.listTasks({ search: name });
+    expect(leftovers).toHaveLength(0);
+  });
+
   it("should create a task with tags", async () => {
     const tagName = `${PREFIX}-tag`;
     const task = await client.createTask({
       name: `${PREFIX} Tagged task`,
       tags: [tagName],
+      createMissingTags: true,
     });
     createdTaskIds.push(task.id);
 

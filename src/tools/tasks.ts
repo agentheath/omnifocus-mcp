@@ -18,7 +18,7 @@ const batchTaskItemSchema: z.ZodType<any> = z.lazy(() =>
     plannedDate: z.string().optional().describe("Planned date (ISO 8601; a bare YYYY-MM-DD means 9:00 AM local time)"),
     estimatedMinutes: z.number().min(0).optional().describe("Estimated duration in minutes"),
     completedByChildren: z.boolean().optional().describe("Auto-complete when children complete"),
-    tags: z.array(z.string()).optional().describe("Tag names"),
+    tags: z.array(z.string()).optional().describe("Existing tag names (exact match)"),
     repetitionRule: repetitionRuleSchema,
     children: z.array(batchTaskItemSchema).optional().describe("Subtasks"),
   }),
@@ -90,8 +90,9 @@ export function registerTaskTools(server: McpServer, client: OmniFocusClient): v
       estimatedMinutes: z.number().min(0).optional().describe("Estimated duration in minutes"),
       completedByChildren: z.boolean().optional().describe("Auto-complete when all children are completed"),
       projectId: z.string().optional().describe("Project ID to add task to"),
-      projectName: z.string().optional().describe("Project name to add task to"),
-      tags: z.array(z.string()).optional().describe("Tag names to apply (created if they don't exist)"),
+      projectName: z.string().optional().describe("Project name to add task to (exact match; if several projects share the name, the one still active or on hold is used)"),
+      tags: z.array(z.string()).optional().describe("Existing tag names to apply (exact match)"),
+      createMissingTags: z.boolean().optional().describe("Create any tag names that don't exist yet (default false: unknown tag names are an error, to avoid near-duplicate tags)"),
       repetitionRule: repetitionRuleSchema,
     },
     async (args) => {
@@ -213,7 +214,7 @@ export function registerTaskTools(server: McpServer, client: OmniFocusClient): v
     {
       taskIds: z.array(z.string()).describe("Task IDs to move"),
       projectId: z.string().optional().describe("Destination project ID"),
-      projectName: z.string().optional().describe("Destination project name"),
+      projectName: z.string().optional().describe("Destination project name (exact match; if several projects share the name, the one still active or on hold is used)"),
       parentTaskId: z.string().optional().describe("Destination parent task ID (for subtasks)"),
     },
     async (args) => {
@@ -233,7 +234,7 @@ export function registerTaskTools(server: McpServer, client: OmniFocusClient): v
     {
       taskIds: z.array(z.string()).describe("Task IDs to duplicate"),
       projectId: z.string().optional().describe("Destination project ID"),
-      projectName: z.string().optional().describe("Destination project name"),
+      projectName: z.string().optional().describe("Destination project name (exact match; if several projects share the name, the one still active or on hold is used)"),
     },
     async (args) => {
       try {
@@ -251,8 +252,9 @@ export function registerTaskTools(server: McpServer, client: OmniFocusClient): v
     "Set, add, or remove tags on a task",
     {
       taskId: z.string().describe("The task ID"),
-      tagNames: z.array(z.string()).describe("Tag names to set/add/remove"),
+      tagNames: z.array(z.string()).describe("Existing tag names to set/add/remove (exact match)"),
       mode: z.enum(["replace", "add", "remove"]).describe("How to modify tags: replace all, add to existing, or remove specific tags"),
+      createMissingTags: z.boolean().optional().describe("Create any tag names that don't exist yet (default false: unknown tag names are an error, to avoid near-duplicate tags)"),
     },
     async (args) => {
       try {
@@ -354,8 +356,9 @@ export function registerTaskTools(server: McpServer, client: OmniFocusClient): v
     {
       tasks: z.array(batchTaskItemSchema).min(1).describe("Array of tasks to create (can include nested children)"),
       projectId: z.string().optional().describe("Project ID to add tasks to"),
-      projectName: z.string().optional().describe("Project name to add tasks to"),
+      projectName: z.string().optional().describe("Project name to add tasks to (exact match; if several projects share the name, the one still active or on hold is used)"),
       parentTaskId: z.string().optional().describe("Parent task ID for subtasks"),
+      createMissingTags: z.boolean().optional().describe("Create any tag names that don't exist yet (default false: unknown tag names are an error, to avoid near-duplicate tags)"),
       sync: z.boolean().optional().describe("Trigger an OmniFocus sync after the batch completes (default false). Skips on error."),
     },
     async ({ sync, ...args }) => {

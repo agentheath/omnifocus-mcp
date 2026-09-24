@@ -178,6 +178,7 @@ export interface CreateTaskArgs {
     ruleString: string;
     method: "fixed" | "startAfterCompletion" | "dueAfterCompletion";
   };
+  createMissingTags?: boolean;
 }
 
 export interface UpdateTaskArgs {
@@ -220,6 +221,7 @@ export interface SetTaskTagsArgs {
   taskId: string;
   tagNames: string[];
   mode: "replace" | "add" | "remove";
+  createMissingTags?: boolean;
 }
 
 export interface AddTaskNotificationArgs {
@@ -252,6 +254,7 @@ export interface CreateProjectArgs {
   flagged?: boolean;
   tags?: string[];
   reviewInterval?: { steps: number; unit: string };
+  createMissingTags?: boolean;
 }
 
 export interface UpdateProjectArgs {
@@ -328,6 +331,7 @@ export interface BatchCreateTasksArgs {
   projectId?: string;
   projectName?: string;
   parentTaskId?: string;
+  createMissingTags?: boolean;
 }
 
 export interface BatchDeleteTasksArgs {

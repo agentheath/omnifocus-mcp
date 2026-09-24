@@ -1,5 +1,6 @@
 import { effectiveStatusFn, serializeProjectFn, serializeTaskFn } from "../serializers.js";
 import type { ListProjectsArgs, CreateProjectArgs, UpdateProjectArgs, GetProjectTasksArgs } from "../../types/omnifocus.js";
+import { findProjectByNameFn, resolveTagsFn } from "../lookups.js";
 import { validateDateArgs, normalizeDateArgs, TASK_DATE_TIMES } from "../../utils/dates.js";
 
 export function buildListProjectsScript(args: ListProjectsArgs): string {
@@ -55,13 +56,9 @@ export function buildGetProjectScript(idOrName: string): string {
   return `(() => {
   var args = JSON.parse(${JSON.stringify(argsJson)});
   ${serializeProjectFn}
+  ${findProjectByNameFn}
 
-  var project = byId(flattenedProjects, args.idOrName);
-  if (!project) {
-    var matches = flattenedProjects.filter(function(p) { return p.name === args.idOrName; });
-    if (matches.length > 0) project = matches[0];
-  }
-  if (!project) throw new Error("Project not found: " + args.idOrName);
+  var project = byId(flattenedProjects, args.idOrName) || findProjectByName(args.idOrName);
   return JSON.stringify(serializeProject(project));
 })()`;
 }
@@ -72,6 +69,7 @@ export function buildCreateProjectScript(args: CreateProjectArgs): string {
   return `(() => {
   var args = JSON.parse(${JSON.stringify(argsJson)});
   ${serializeProjectFn}
+  ${resolveTagsFn}
 
   var folder = null;
   if (args.folderId) {
@@ -82,6 +80,9 @@ export function buildCreateProjectScript(args: CreateProjectArgs): string {
     if (folders.length === 0) throw new Error("Folder not found: " + args.folderName);
     folder = folders[0];
   }
+
+  var tagNames = args.tags || [];
+  var tagMap = resolveTags(tagNames, args.createMissingTags === true);
 
   var project = new Project(args.name, folder ? folder.ending : library.ending);
 
@@ -102,18 +103,7 @@ export function buildCreateProjectScript(args: CreateProjectArgs): string {
     project.reviewInterval = ri;
   }
 
-  if (args.tags && args.tags.length > 0) {
-    args.tags.forEach(function(tagName) {
-      var matches = flattenedTags.filter(function(t) { return t.name === tagName; });
-      if (matches.length > 0) {
-        project.task.addTag(matches[0]);
-      } else {
-        var newTag = new Tag(tagName);
-        tags.push(newTag);
-        project.task.addTag(newTag);
-      }
-    });
-  }
+  tagNames.forEach(function(tagName) { project.task.addTag(tagMap[tagName]); });
 
   return JSON.stringify(serializeProject(project));
 })()`;

@@ -30,7 +30,7 @@ export function registerProjectTools(server: McpServer, client: OmniFocusClient)
     "get_project",
     "Get detailed information about a specific project by ID or name",
     {
-      idOrName: z.string().describe("The project ID or exact name"),
+      idOrName: z.string().describe("The project ID or exact name (if several projects share the name, the one still active or on hold is used)"),
     },
     async ({ idOrName }) => {
       try {
@@ -58,7 +58,8 @@ export function registerProjectTools(server: McpServer, client: OmniFocusClient)
       dueDate: z.string().optional().describe("Due date (ISO 8601; a bare YYYY-MM-DD means 5:00 PM local time)"),
       plannedDate: z.string().optional().describe("Planned date (ISO 8601; a bare YYYY-MM-DD means 9:00 AM local time)"),
       flagged: z.boolean().optional().describe("Whether to flag the project"),
-      tags: z.array(z.string()).optional().describe("Tag names to apply"),
+      tags: z.array(z.string()).optional().describe("Existing tag names to apply (exact match)"),
+      createMissingTags: z.boolean().optional().describe("Create any tag names that don't exist yet (default false: unknown tag names are an error, to avoid near-duplicate tags)"),
       reviewInterval: z
         .object({
           steps: z.number().describe("Number of units between reviews"),

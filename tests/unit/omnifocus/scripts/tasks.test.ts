@@ -466,7 +466,7 @@ describe("task script builders", () => {
         mode: "add",
       });
       expect(script).toContain("addTag");
-      expect(script).toContain("findOrCreateTag");
+      expect(script).toContain("tagMap = resolveTags(args.tagNames, args.createMissingTags === true)");
     });
 
     it("should remove tags without creating them (Bug 3 regression)", () => {
@@ -476,8 +476,8 @@ describe("task script builders", () => {
         mode: "remove",
       });
       expect(script).toContain("removeTag");
-      // The remove branch should NOT use findOrCreateTag — it should use a filter-based lookup
-      expect(script).not.toMatch(/mode === "remove"[\s\S]*findOrCreateTag/);
+      // The remove branch should NOT resolve (and possibly create) tags — it should use a plain lookup
+      expect(script).not.toMatch(/mode === "remove"\) \{\s*tagMap = resolveTags/);
       // It should NOT contain "new Tag" in the remove branch
       const removeSection = script.split('mode === "remove"')[1];
       expect(removeSection).not.toContain("new Tag(name)");
@@ -617,7 +617,7 @@ describe("task script builders", () => {
       const script = buildBatchCreateTasksScript({
         tasks: [{ name: "Tagged", tags: ["work"] }],
       });
-      expect(script).toContain("findOrCreateTag");
+      expect(script).toContain("resolveTags(allTagNames, args.createMissingTags === true)");
       expect(script).toContain("work");
     });
 
